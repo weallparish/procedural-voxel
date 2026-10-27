@@ -233,7 +233,7 @@ int main() {
     for (int x = -16; x < 16; x++) {
         for (int z = -16; z < 16; z++) {
             for (int y = -16; y < 16; y++) {
-                world.setBlock(x, y, z, 1);
+                world.setBlock(x, y, z, y);
             }
         }
     }
@@ -241,7 +241,7 @@ int main() {
 
     std::unordered_map<ChunkPos, ChunkMesh, ChunkPosHash> meshes;
     for (auto& [pos, chunk] : world.chunks) {
-        MeshData md = meshChunk(chunk.get());
+        MeshData md = meshChunk(world, pos);
         if (md.indices.empty()) continue;
         meshes[pos].upload(md);
     }

@@ -24,7 +24,7 @@ struct ChunkPosHash {
 struct World {
     std::unordered_map<ChunkPos, std::unique_ptr<Chunk>, ChunkPosHash> chunks;
 
-    inline int floorDiv(int a, int b) {
+    inline int floorDiv(int a, int b) const {
         int q = a / b;
         
         // If there is a decimal left over and a and b aren't the same sign.
@@ -36,7 +36,7 @@ struct World {
         }
     }
 
-    inline int floorMod(int a, int b) {
+    inline int floorMod(int a, int b) const {
         int m = a % b;
 
         // If there is a decimal left over and a and b aren't the same sign.
@@ -54,13 +54,13 @@ struct World {
         return slot.get();
     }
 
-    Chunk* getChunk(const ChunkPos& pos) {
+    Chunk* getChunk(const ChunkPos& pos) const {
         auto it = chunks.find(pos);
         if (it == chunks.end()) return nullptr;
         return it->second.get();
     }
 
-    BlockID getBlock(int x, int y, int z) {
+    BlockID getBlock(int x, int y, int z) const {
         const Chunk* c = getChunk({floorDiv(x, CHUNK_SIZE), floorDiv(y, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)});
 
         if (!c) {
