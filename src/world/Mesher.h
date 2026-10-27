@@ -41,7 +41,7 @@ struct MeshData {
     std::vector<uint32_t> indices;
 };
 
-bool isAir(const Chunk& c, int x, int y, int z) {
+bool isAir(const Chunk* c, int x, int y, int z) {
     // For now, we just assume border chunks are air.
     if (x < 0 || x >= CHUNK_SIZE 
      || y < 0 || y >= CHUNK_SIZE
@@ -49,7 +49,7 @@ bool isAir(const Chunk& c, int x, int y, int z) {
         return true;
     }
 
-    return c.get(x, y, z) == 0;
+    return c->get(x, y, z) == 0;
 }
 
 void addFace(MeshData& mesh, int x, int y, int z, int face, int tile) {
@@ -73,4 +73,23 @@ void addFace(MeshData& mesh, int x, int y, int z, int face, int tile) {
 
     mesh.indices.insert(mesh.indices.end(),
         { base, base + 1, base + 2, base + 2, base + 3, base });
+}
+
+MeshData meshChunk(Chunk* c) {
+    MeshData mesh;
+    for (int x = 0; x < CHUNK_SIZE; x++) {
+        for (int z = 0; z < CHUNK_SIZE; z++) {
+            for (int y = 0; y < CHUNK_SIZE; y++) {
+                if (!isAir(c, x, y, z)) {
+                    for (int i = 0; i < 6; i++) {
+                        if (isAir(c, x + FACES[i].dx, y + FACES[i].dy, z + FACES[i].dz)) {
+                            addFace(mesh, x, y, z, i, y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return mesh;
 }

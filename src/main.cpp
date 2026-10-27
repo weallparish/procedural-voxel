@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <vector>
 
+#include "world/World.h"
 #include "world/Chunk.h"
 #include "world/Mesher.h"
 #include "render/ChunkMesh.h"
@@ -50,13 +51,14 @@ layout(location = 1) in vec2 aUV;
 layout(location = 2) in float aShade;
 
 uniform mat4 mvp;
+uniform vec3 uChunkOffset;
 
 out vec2 vUV;
 out float vShade;
 void main() {
     vUV = aUV;
     vShade = aShade;
-    gl_Position = mvp * vec4(aPos, 1.0);
+    gl_Position = mvp * vec4(aPos + uChunkOffset, 1.0);
 }
 )";
 
@@ -196,6 +198,7 @@ int main() {
 
     GLuint chunkProgram = createGLProgram(lVertSrc, lFragSrc);
     GLint chunkMvpLoc = glGetUniformLocation(chunkProgram, "mvp");
+    GLint offsetLoc = glGetUniformLocation(chunkProgram, "uChunkOffset");
 
     std::vector<LineVertex> grid = buildGrid(50);
     GLuint vao = 0, vbo = 0;
@@ -226,32 +229,22 @@ int main() {
 
     double lastTime = glfwGetTime();
 
-    Chunk c;
-    MeshData mesh;
-    for (int x = 0; x < 16; x++) {
-        for (int z = 0; z < 16; z++) {
-            for (int y = 0; y < 16; y++) {
-                c.set(x, y, z, 1);
+    World world;
+    for (int x = -16; x < 16; x++) {
+        for (int z = -16; z < 16; z++) {
+            for (int y = -16; y < 16; y++) {
+                world.setBlock(x, y, z, 1);
             }
         }
     }
 
-    for (int x = 0; x < 16; x++) {
-        for (int z = 0; z < 16; z++) {
-            for (int y = 0; y < 16; y++) {
-                if (!isAir(c, x, y, z)) {
-                    for (int i = 0; i < 6; i++) {
-                        if (isAir(c, x + FACES[i].dx, y + FACES[i].dy, z + FACES[i].dz)) {
-                            addFace(mesh, x, y, z, i, y);
-                        }
-                    }
-                }
-            }
-        }
-    }
 
-    ChunkMesh chunkMesh;
-    chunkMesh.upload(mesh);
+    std::unordered_map<ChunkPos, ChunkMesh, ChunkPosHash> meshes;
+    for (auto& [pos, chunk] : world.chunks) {
+        MeshData md = meshChunk(chunk.get());
+        if (md.indices.empty()) continue;
+        meshes[pos].upload(md);
+    }
 
     // Code to run while the window is still open.
     while (!glfwWindowShouldClose(window)) {
@@ -301,13 +294,20 @@ int main() {
         glUniform1i(glGetUniformLocation(chunkProgram, "uAtlas"), 0);
         glBindTexture(GL_TEXTURE_2D, atlasTex);
         
-        chunkMesh.draw();
+        for (auto& [pos, mesh] : meshes) {
+            glm::vec3 offset(pos.x * CHUNK_SIZE, pos.y * CHUNK_SIZE, pos.z * CHUNK_SIZE);
+            glUniform3fv(offsetLoc, 1, glm::value_ptr(offset));
+            mesh.draw();
+        }
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }
 
     // Clear all resources we were using.
+    for (auto& [pos, mesh] : meshes) mesh.destroy();
+    meshes.clear();
+
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     glDeleteProgram(program);

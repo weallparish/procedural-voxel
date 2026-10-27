@@ -59,7 +59,8 @@ add_executable(voxel src/main.cpp
   src/render/Texture.h
   src/core/Input.h
   src/core/Camera.h
-  src/core/Debug.h)
+  src/core/Debug.h
+  src/world/World.h)
 target_link_libraries(voxel PRIVATE glad glfw glm::glm imgui)
 
 target_include_directories(voxel PRIVATE ${stb_SOURCE_DIR})
