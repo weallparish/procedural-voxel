@@ -1,0 +1,69 @@
+#pragma once
+
+#include <vector>
+
+#include "Chunk.h"
+
+struct Face {
+    int dx, dy, dz;
+};
+
+constexpr Face FACES[6] = {
+    {1, 0, 0},  // +X (east)
+    {-1, 0, 0}, // -X (west)
+    {0, 1, 0},  // +Y (up)
+    {0, -1, 0}, // -Y (down)
+    {0, 0, 1},  // +Z (south)
+    {0, 0, -1}  // -Z (north)
+};
+
+constexpr int CORNERS[6][4][3] = {
+    {{1,0,1},{1,0,0},{1,1,0},{1,1,1}},  // +X
+    {{0,0,0},{0,0,1},{0,1,1},{0,1,0}},  // -X
+    {{0,1,1},{1,1,1},{1,1,0},{0,1,0}},  // +Y
+    {{0,0,0},{1,0,0},{1,0,1},{0,0,1}},  // -Y
+    {{0,0,1},{1,0,1},{1,1,1},{0,1,1}},  // +Z
+    {{1,0,0},{0,0,0},{0,1,0},{1,1,0}},  // -Z
+};
+
+constexpr float UVS[4][2] = {{0,0}, {1,0}, {1,1}, {0,1}};
+constexpr float FACE_SHADE[6] = {0.8f, 0.8f, 1.0f, 0.5f, 0.7f, 0.7f};
+
+struct Vertex {
+    float x, y, z; // position in chunk-space
+    float u, v; // texture coordinate
+    float shade; // brightness multiplier
+};
+
+struct MeshData {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+};
+
+bool isAir(const Chunk& c, int x, int y, int z) {
+    // For now, we just assume border chunks are air.
+    if (x < 0 || x >= CHUNK_SIZE 
+     || y < 0 || y >= CHUNK_SIZE
+     || z < 0 || z >= CHUNK_SIZE) {
+        return true;
+    }
+
+    return c.get(x, y, z) == 0;
+}
+
+void addFace(MeshData& mesh, int x, int y, int z, int face) {
+    uint32_t base = (uint32_t)mesh.vertices.size();
+
+    for (int i = 0; i < 4; i++) {
+        mesh.vertices.push_back({
+            (float)(x + CORNERS[face][i][0]),
+            (float)(y + CORNERS[face][i][1]),
+            (float)(z + CORNERS[face][i][2]),
+            UVS[i][0], UVS[i][1],
+            FACE_SHADE[face]
+        });
+    }
+
+    mesh.indices.insert(mesh.indices.end(),
+        { base, base + 1, base + 2, base + 2, base + 3, base });
+}
