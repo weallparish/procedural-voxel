@@ -56,7 +56,10 @@ target_link_libraries(imgui PUBLIC glfw)
 # ---- Game ----
 add_executable(voxel src/main.cpp
   src/world/Mesher.h
-  src/render/Texture.h)
+  src/render/Texture.h
+  src/core/Input.h
+  src/core/Camera.h
+  src/core/Debug.h)
 target_link_libraries(voxel PRIVATE glad glfw glm::glm imgui)
 
 target_include_directories(voxel PRIVATE ${stb_SOURCE_DIR})

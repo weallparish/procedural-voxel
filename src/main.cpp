@@ -1,5 +1,5 @@
 // glad must be included before GLFW.
-#include <glad/gl.h> // I do not know why there is an error here... it compiles.
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
@@ -18,6 +18,9 @@
 #include "world/Mesher.h"
 #include "render/ChunkMesh.h"
 #include "render/Texture.h"
+#include "core/Input.h"
+#include "core/Camera.h"
+#include "core/Debug.h"
 
 // ---------------------------------------------------------------------------
 // Shaders (inline for now; move to assets/shaders once you have more than one)
@@ -114,36 +117,6 @@ static GLuint createGLProgram(const char* vs, const char* fs) {
     glDeleteShader(f);
     return p;
 }
-
-// ---------------------------------------------------------------------------
-// Camera
-// ---------------------------------------------------------------------------
-struct Camera {
-    glm::vec3 pos{0.0f, 3.0f, 8.0f};
-    float yaw = -90.0f;   // degrees; -90 looks down -Z
-    float pitch = 0.0f;   // degrees
-    float fov = 70.0f;
-    float speed = 8.0f;   // blocks per second
-    float sensitivity = 0.1f;
-
-    // Get vector pointing out the front of the character.
-    glm::vec3 front() const {
-        float y = glm::radians(yaw), p = glm::radians(pitch);
-        return glm::normalize(glm::vec3(std::cos(y) * std::cos(p), std::sin(p), std::sin(y) * std::cos(p)));
-    }
-
-    // Get vector pointing out the right of the character.
-    glm::vec3 right() const { 
-        // Right vector is orthogonal to front and up.
-        return glm::normalize(glm::cross(front(), glm::vec3(0, 1, 0))); 
-    }
-
-    // Get view projection matrix of the camera.
-    glm::mat4 view() const { 
-        // We are looking from our position towards the front vector.
-        return glm::lookAt(pos, pos + front(), glm::vec3(0, 1, 0)); 
-    }
-};
 
 // ---------------------------------------------------------------------------
 // Debug grid: lines on y = 0 plus colored axes (X red, Y green, Z blue)
@@ -247,20 +220,11 @@ int main() {
     GLuint atlasTex = uploadAtlas(atlasPixels.data(), ATLAS_PX, ATLAS_PX);
 
     Camera cam;
-    bool captured = true;
-    bool firstMouse = true;
-    bool escWasDown = false;
-    double lastMouseX = 0.0, lastMouseY = 0.0;
-    double lastTime = glfwGetTime();
 
-    auto setCapture = [&](bool on) {
-        captured = on;
-        firstMouse = true;
-        glfwSetInputMode(window, GLFW_CURSOR, on ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-        if (on && glfwRawMouseMotionSupported())
-            glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-    };
-    setCapture(true);
+    Input input;
+    input.setCapture(window, true);
+
+    double lastTime = glfwGetTime();
 
     Chunk c;
     MeshData mesh;
@@ -297,39 +261,8 @@ int main() {
 
         glfwPollEvents();
 
-        // Esc toggles mouse capture (so you can use the ImGui widgets)
-        bool escDown = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
-        if (escDown && !escWasDown) setCapture(!captured);
-        escWasDown = escDown;
-
-        if (captured) {
-            // Mouse look
-            double mx, my;
-            glfwGetCursorPos(window, &mx, &my);
-            if (firstMouse) {
-                lastMouseX = mx;
-                lastMouseY = my;
-                firstMouse = false;
-            }
-            float dx = (float)(mx - lastMouseX);
-            float dy = (float)(my - lastMouseY);
-            lastMouseX = mx;
-            lastMouseY = my;
-            cam.yaw += dx * cam.sensitivity;
-            cam.pitch -= dy * cam.sensitivity;
-            cam.pitch = glm::clamp(cam.pitch, -89.0f, 89.0f);
-
-            // Movement
-            float v = cam.speed * dt;
-            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) v *= 3.0f;
-            glm::vec3 f = cam.front(), r = cam.right();
-            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) cam.pos += f * v;
-            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) cam.pos -= f * v;
-            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) cam.pos += r * v;
-            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) cam.pos -= r * v;
-            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) cam.pos.y += v;
-            if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) cam.pos.y -= v;
-        }
+        // Apply user input
+        input.applyInput(window, &cam, dt);
 
         int frameBufferWidth, frameBufferHeight;
         glfwGetFramebufferSize(window, &frameBufferWidth, &frameBufferHeight);
@@ -343,24 +276,8 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Debug Window
-        ImGui::Begin("Debug");
-        ImGui::Text("%.1f FPS (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-        ImGui::Text("Pos: %.1f, %.1f, %.1f", cam.pos.x, cam.pos.y, cam.pos.z);
-        ImGui::SliderFloat("FOV", &cam.fov, 40.0f, 110.0f);
-        ImGui::SliderFloat("Speed", &cam.speed, 1.0f, 50.0f);
-
-        // This is called when the checkbox is selected.
-        if (ImGui::Checkbox("VSync", &vsync)) 
-        {
-            glfwSwapInterval(vsync ? 1 : 0);
-        }
-            
-        ImGui::Separator();
-        ImGui::TextDisabled("WASD move, Space/Ctrl up/down, Shift sprint");
-        ImGui::TextDisabled("Esc: toggle mouse capture");
-        ImGui::End();
-
+        renderDebug(&cam, &vsync);
+        
         // We're done creating windows, render them.
         ImGui::Render();
 
