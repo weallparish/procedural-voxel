@@ -30,7 +30,11 @@ FetchContent_Declare(imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui.git
   GIT_TAG        v1.91.5)
 
-FetchContent_MakeAvailable(glfw glm imgui)
+FetchContent_Declare(stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG        master)
+
+FetchContent_MakeAvailable(glfw glm imgui stb)
 
 # ---- glad (generated files live in external/glad, see README steps) ----
 add_library(glad STATIC external/glad/src/gl.c)
@@ -51,8 +55,11 @@ target_link_libraries(imgui PUBLIC glfw)
 
 # ---- Game ----
 add_executable(voxel src/main.cpp
-  src/world/Mesher.h)
+  src/world/Mesher.h
+  src/render/Texture.h)
 target_link_libraries(voxel PRIVATE glad glfw glm::glm imgui)
+
+target_include_directories(voxel PRIVATE ${stb_SOURCE_DIR})
 
 if(MSVC)
   target_compile_options(voxel PRIVATE /W4)

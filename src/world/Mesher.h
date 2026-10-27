@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "Chunk.h"
+#include "render/Texture.h"
 
 struct Face {
     int dx, dy, dz;
@@ -51,15 +52,21 @@ bool isAir(const Chunk& c, int x, int y, int z) {
     return c.get(x, y, z) == 0;
 }
 
-void addFace(MeshData& mesh, int x, int y, int z, int face) {
+void addFace(MeshData& mesh, int x, int y, int z, int face, int tile) {
     uint32_t base = (uint32_t)mesh.vertices.size();
 
+    int tx = tile % ATLAS_TILES;
+    int ty = tile / ATLAS_TILES;
+
     for (int i = 0; i < 4; i++) {
+        float u = (tx + UVS[i][0]) / ATLAS_TILES;
+        float v = (ty + 1.0f - UVS[i][1]) / ATLAS_TILES;
+
         mesh.vertices.push_back({
             (float)(x + CORNERS[face][i][0]),
             (float)(y + CORNERS[face][i][1]),
             (float)(z + CORNERS[face][i][2]),
-            UVS[i][0], UVS[i][1],
+            u, v,
             FACE_SHADE[face]
         });
     }

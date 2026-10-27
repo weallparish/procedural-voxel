@@ -17,6 +17,7 @@
 #include "world/Chunk.h"
 #include "world/Mesher.h"
 #include "render/ChunkMesh.h"
+#include "render/Texture.h"
 
 // ---------------------------------------------------------------------------
 // Shaders (inline for now; move to assets/shaders once you have more than one)
@@ -60,9 +61,11 @@ static const char* lFragSrc = R"(#version 450 core
 in vec2 vUV;
 in float vShade;
 
+uniform sampler2D uAtlas;
+
 out vec4 FragColor;
 void main() {
-    FragColor = vec4(vec3(0.35, 0.7, 0.3) * vShade, 1.0);
+    FragColor = vec4(texture(uAtlas, vUV) * vShade);
 }
 )";
 
@@ -240,6 +243,9 @@ int main() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(LineVertex), (void*)offsetof(LineVertex, color));
     glBindVertexArray(0);
 
+    auto atlasPixels = makeTestAtlas();
+    GLuint atlasTex = uploadAtlas(atlasPixels.data(), ATLAS_PX, ATLAS_PX);
+
     Camera cam;
     bool captured = true;
     bool firstMouse = true;
@@ -260,7 +266,7 @@ int main() {
     MeshData mesh;
     for (int x = 0; x < 16; x++) {
         for (int z = 0; z < 16; z++) {
-            for (int y = 0; y < 8; y++) {
+            for (int y = 0; y < 16; y++) {
                 c.set(x, y, z, 1);
             }
         }
@@ -268,11 +274,11 @@ int main() {
 
     for (int x = 0; x < 16; x++) {
         for (int z = 0; z < 16; z++) {
-            for (int y = 0; y < 8; y++) {
+            for (int y = 0; y < 16; y++) {
                 if (!isAir(c, x, y, z)) {
                     for (int i = 0; i < 6; i++) {
                         if (isAir(c, x + FACES[i].dx, y + FACES[i].dy, z + FACES[i].dz)) {
-                            addFace(mesh, x, y, z, i);
+                            addFace(mesh, x, y, z, i, y);
                         }
                     }
                 }
@@ -374,6 +380,10 @@ int main() {
 
         glUseProgram(chunkProgram);
         glUniformMatrix4fv(chunkMvpLoc, 1, GL_FALSE, glm::value_ptr(mvp));
+        glActiveTexture(GL_TEXTURE0);
+        glUniform1i(glGetUniformLocation(chunkProgram, "uAtlas"), 0);
+        glBindTexture(GL_TEXTURE_2D, atlasTex);
+        
         chunkMesh.draw();
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
