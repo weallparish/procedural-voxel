@@ -229,11 +229,12 @@ int main() {
 
     double lastTime = glfwGetTime();
 
+    // Generate world with a chunk going in the positive and negative direction for each axis.
     World world;
     for (int x = -16; x < 16; x++) {
         for (int z = -16; z < 16; z++) {
             for (int y = -16; y < 16; y++) {
-                world.setBlock(x, y, z, y);
+                world.setBlock(x, y, z, 1);
             }
         }
     }
@@ -241,7 +242,7 @@ int main() {
 
     std::unordered_map<ChunkPos, ChunkMesh, ChunkPosHash> meshes;
     for (auto& [pos, chunk] : world.chunks) {
-        MeshData md = meshChunk(world, pos);
+        MeshData md = meshChunk(world, pos, chunk.get()); // Probably should find a better way to pass this info in. Weird that I pass in the position and the chunk.
         if (md.indices.empty()) continue;
         meshes[pos].upload(md);
     }

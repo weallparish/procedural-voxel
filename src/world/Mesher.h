@@ -78,9 +78,8 @@ void addFace(MeshData& mesh, int x, int y, int z, int face, int tile) {
         { base, base + 1, base + 2, base + 2, base + 3, base });
 }
 
-MeshData meshChunk(const World& world, const ChunkPos& pos) {
+MeshData meshChunk(const World& world, const ChunkPos& pos, Chunk* c) {
     MeshData mesh;
-    Chunk* c = world.getChunk(pos);
     
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int z = 0; z < CHUNK_SIZE; z++) {
