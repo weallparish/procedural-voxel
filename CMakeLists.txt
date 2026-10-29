@@ -68,7 +68,8 @@ add_executable(voxel src/main.cpp
   src/world/World.h
   src/world/TerrainGen.h
   src/render/Cull.h
-  src/world/ChunkStreamer.h)
+  src/world/ChunkStreamer.h
+  src/render/ChunkRenderer.h)
 target_link_libraries(voxel PRIVATE glad glfw glm::glm imgui)
 
 target_include_directories(voxel PRIVATE ${stb_SOURCE_DIR})

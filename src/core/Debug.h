@@ -10,14 +10,14 @@
 #include "Camera.h"
 
 
-void renderDebug(int& chunksRendered, int& totalChunks, int& chunksUnloaded, ChunkStreamer* chunkStreamer, Camera* cam, bool* vsync) {
+void renderDebug(int& chunksRendered, int& chunksMeshed, int& totalChunks, int& chunksUnloaded, ChunkStreamer* chunkStreamer, Camera* cam, bool* vsync) {
     // Debug Window
     ImGui::Begin("Debug");
 
     ImGui::Text("%.1f FPS (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 
     if (ImGui::CollapsingHeader("Rendering")) {
-        ImGui::Text("%d / %d / %d (Rendered / Generated / Unloaded)", chunksRendered, totalChunks, chunksUnloaded);
+        ImGui::Text("%d / %d / %d / %d (Rendered / Generated / Meshed / Unloaded)", chunksRendered, totalChunks, chunksMeshed, chunksUnloaded);
         ImGui::SliderInt("Render distance", &chunkStreamer->radius, 1, 50);
         ImGui::SliderInt("Renders per frame", &chunkStreamer->chunkLimitPerFrame, 1, 50);
     }

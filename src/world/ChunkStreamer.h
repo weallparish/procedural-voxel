@@ -66,12 +66,13 @@ struct ChunkStreamer {
         }
 
         // Generate up to chunkLimitPerFrame chunks.
-        for (int i = 0; i < chunkLimitPerFrame; i++) {
-            if (i >= chunkRequests.size()) {
-                break;
-            }
+        int budget = chunkLimitPerFrame;
+        for (auto chunkRequest : chunkRequests) {
+            if (budget == 0) break;
 
-            tg.generateChunk(world.createChunk(chunkRequests[i].pos), chunkRequests[i].pos);
+            tg.generateChunk(world.createChunk(chunkRequest.pos), chunkRequest.pos);
+
+            budget--;
         }
 
         for (int i = chunkLimitPerFrame; i >= 0; i--) {

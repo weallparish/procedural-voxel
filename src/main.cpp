@@ -22,6 +22,7 @@
 #include "render/ChunkMesh.h"
 #include "render/Texture.h"
 #include "render/Cull.h"
+#include "render/ChunkRenderer.h"
 #include "core/Input.h"
 #include "core/Camera.h"
 #include "core/Debug.h"
@@ -47,81 +48,6 @@ void main() {
     FragColor = vec4(vColor, 1.0);
 }
 )";
-
-static const char* lVertSrc = R"(#version 450 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec2 aUV;
-layout(location = 2) in float aShade;
-
-uniform mat4 mvp;
-uniform vec3 uChunkOffset;
-
-out vec2 vUV;
-out float vShade;
-void main() {
-    vUV = aUV;
-    vShade = aShade;
-    gl_Position = mvp * vec4(aPos + uChunkOffset, 1.0);
-}
-)";
-
-static const char* lFragSrc = R"(#version 450 core
-in vec2 vUV;
-in float vShade;
-
-uniform sampler2D uAtlas;
-
-out vec4 FragColor;
-void main() {
-    FragColor = vec4((texture(uAtlas, vUV)) * vShade);
-}
-)";
-
-static void printGLError(const char* prefix, GLuint id) {
-    // Idk how long errors can get... might need a loop here but hopefully this just doesn't get called.
-    char log[1024];
-    glGetProgramInfoLog(id, sizeof(log), nullptr, log);
-    std::fprintf(stderr, "%s link error:\n%s\n", prefix, log);
-}
-
-static GLuint compileGLShader(GLenum type, const char* src) {
-    GLuint s = glCreateShader(type);
-    glShaderSource(s, 1, &src, nullptr);
-
-    // Try to compile the shader.
-    glCompileShader(s);
-    GLint ok = 0;
-    glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
-
-
-    if (!ok) {
-        printGLError("Shader", s);
-    }
-    return s;
-}
-
-static GLuint createGLProgram(const char* vs, const char* fs) {
-    GLuint v = compileGLShader(GL_VERTEX_SHADER, vs);
-    GLuint f = compileGLShader(GL_FRAGMENT_SHADER, fs);
-    GLuint p = glCreateProgram();
-    glAttachShader(p, v);
-    glAttachShader(p, f);
-
-    // Try to link the program to the shaders
-    glLinkProgram(p);
-    GLint ok = 0;
-    glGetProgramiv(p, GL_LINK_STATUS, &ok);
-
-    // Print error if program couldn't link.
-    if (!ok) {
-        printGLError("Program", p);
-    }
-
-    // Program has been linked, we can delete shaders.
-    glDeleteShader(v);
-    glDeleteShader(f);
-    return p;
-}
 
 // ---------------------------------------------------------------------------
 // Debug grid: lines on y = 0 plus colored axes (X red, Y green, Z blue)
@@ -199,10 +125,6 @@ int main() {
     GLuint program = createGLProgram(kVertSrc, kFragSrc);
     GLint mvpLoc = glGetUniformLocation(program, "mvp");
 
-    GLuint chunkProgram = createGLProgram(lVertSrc, lFragSrc);
-    GLint chunkMvpLoc = glGetUniformLocation(chunkProgram, "mvp");
-    GLint offsetLoc = glGetUniformLocation(chunkProgram, "uChunkOffset");
-
     std::vector<LineVertex> grid = buildGrid(50);
     GLuint vao = 0, vbo = 0;
     glGenVertexArrays(1, &vao);
@@ -222,8 +144,6 @@ int main() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(LineVertex), (void*)offsetof(LineVertex, color));
     glBindVertexArray(0);
 
-    GLuint atlasTex = loadTexture("assets/textures/atlas.png");
-
     Camera cam;
 
     Input input;
@@ -236,15 +156,15 @@ int main() {
     BlockRegistry registry;
     World world;
     ChunkStreamer chunkStreamer = ChunkStreamer(12345, registry);
-
-    std::unordered_map<ChunkPos, ChunkMesh, ChunkPosHash> meshes;
+    ChunkRenderer chunkRenderer = ChunkRenderer("assets/textures/atlas.png");
+    
     // for (auto& [pos, chunk] : world.chunks) {
     //     MeshData md = meshChunk(world, pos, chunk.get(), registry); // Probably should find a better way to pass this info in. Weird that I pass in the position and the chunk.
     //     if (md.indices.empty()) continue;
     //     meshes[pos].upload(md);
     // }
 
-    int chunksRendered, chunksTotal, chunksRemoved = 0;
+    int chunksRendered, chunksTotal, chunksMeshed, chunksRemoved = 0;
 
     // Code to run while the window is still open.
     while (!glfwWindowShouldClose(window)) {
@@ -269,7 +189,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        renderDebug(chunksRendered, chunksTotal, chunksRemoved, &chunkStreamer, &cam, &vsync);
+        renderDebug(chunksRendered, chunksMeshed, chunksTotal, chunksRemoved, &chunkStreamer, &cam, &vsync);
         
         // We're done creating windows, render them.
         ImGui::Render();
@@ -293,34 +213,26 @@ int main() {
         glBindVertexArray(0);
 
         // Chunks
-
-        glUseProgram(chunkProgram);
-        glUniformMatrix4fv(chunkMvpLoc, 1, GL_FALSE, glm::value_ptr(mvp));
-        glActiveTexture(GL_TEXTURE0);
-        glUniform1i(glGetUniformLocation(chunkProgram, "uAtlas"), 0);
-        glBindTexture(GL_TEXTURE_2D, atlasTex);
-
-        chunksRemoved += chunkStreamer.update(world, cam).size();
-
-        chunksRendered = 0;
         chunksTotal = world.chunks.size();
-        for (auto& [pos, mesh] : meshes) {
-            if (!isVisibleToFrustum(planes, pos)) {
-                continue;
-            };
-            glm::vec3 offset(pos.x * CHUNK_SIZE, pos.y * CHUNK_SIZE, pos.z * CHUNK_SIZE);
-            glUniform3fv(offsetLoc, 1, glm::value_ptr(offset));
-            mesh.draw();
-            chunksRendered++;
+
+        std::vector<ChunkPos> toRemove = chunkStreamer.update(world, cam);
+        chunksRemoved = toRemove.size();
+
+        for (auto pos : toRemove) {
+            chunkRenderer.drop(pos);
         }
+
+        chunksMeshed = chunkRenderer.update(world, chunkStreamer.chunkRequests, chunkStreamer.radius, registry, chunkStreamer.chunkLimitPerFrame);
+
+        chunksRendered = chunkRenderer.draw(mvp, planes);
+        
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }
 
     // Clear all resources we were using.
-    for (auto& [pos, mesh] : meshes) mesh.destroy();
-    meshes.clear();
+    chunkRenderer.shutdown();
 
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
