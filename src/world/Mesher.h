@@ -41,7 +41,7 @@ struct MeshData {
     std::vector<uint32_t> indices;
 };
 
-bool isAir(const World& world, const ChunkPos& pos, const Chunk* c, int x, int y, int z) {
+bool isAir(const World& world, const ChunkPos& pos, const Chunk* c, int x, int y, int z, const BlockRegistry& reg) {
     // For now, we just assume border chunks are air.
     if (x >= 0 && x < CHUNK_SIZE 
      && y >= 0 && y < CHUNK_SIZE
@@ -52,18 +52,39 @@ bool isAir(const World& world, const ChunkPos& pos, const Chunk* c, int x, int y
     int wx = pos.x * CHUNK_SIZE + x;
     int wy = pos.y * CHUNK_SIZE + y;
     int wz = pos.z * CHUNK_SIZE + z;
-    return world.getBlock(wx, wy, wz) == 0; 
+    return world.getBlock(wx, wy, wz) == 0;
 }
 
-void addFace(MeshData& mesh, int x, int y, int z, int face, int tile) {
+bool isTransparent(const World& world, const ChunkPos& pos, const Chunk* c, int x, int y, int z, const BlockRegistry& reg) {
+    // For now, we just assume border chunks are air.
+    if (x >= 0 && x < CHUNK_SIZE 
+     && y >= 0 && y < CHUNK_SIZE
+     && z >= 0 && z < CHUNK_SIZE) {
+        return !reg.get(c->get(x, y, z)).opaque;
+    }
+
+    int wx = pos.x * CHUNK_SIZE + x;
+    int wy = pos.y * CHUNK_SIZE + y;
+    int wz = pos.z * CHUNK_SIZE + z;
+    return !reg.get(world.getBlock(wx, wy, wz)).opaque;
+}
+
+void addFace(MeshData& mesh, int x, int y, int z, int face, BlockID id, const BlockRegistry& reg) {
     uint32_t base = (uint32_t)mesh.vertices.size();
 
-    int tx = tile % ATLAS_TILES;
-    int ty = tile / ATLAS_TILES;
+    int tile = reg.tileFor(id, face);
+    
+    int tx = tile % ATLAS_WIDTH;
+    int ty = tile / ATLAS_WIDTH;
+
+    float e = 0.5f / TILE_PX;
+
 
     for (int i = 0; i < 4; i++) {
-        float u = (tx + UVS[i][0]) / ATLAS_TILES;
-        float v = (ty + 1.0f - UVS[i][1]) / ATLAS_TILES;
+        float fu = e + UVS[i][0] * (1.0f - 2.0f * e);
+        float fv = e + UVS[i][1] * (1.0f - 2.0f * e);
+        float u = (tx + fu) / ATLAS_WIDTH;
+        float v = (ty + 1.0f - fv) / ATLAS_HEIGHT;
 
         mesh.vertices.push_back({
             (float)(x + CORNERS[face][i][0]),
@@ -78,16 +99,16 @@ void addFace(MeshData& mesh, int x, int y, int z, int face, int tile) {
         { base, base + 1, base + 2, base + 2, base + 3, base });
 }
 
-MeshData meshChunk(const World& world, const ChunkPos& pos, Chunk* c) {
+MeshData meshChunk(const World& world, const ChunkPos& pos, Chunk* c, BlockRegistry& reg) {
     MeshData mesh;
     
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int z = 0; z < CHUNK_SIZE; z++) {
             for (int y = 0; y < CHUNK_SIZE; y++) {
-                if (!isAir(world, pos, c, x, y, z)) {
+                if (!isAir(world, pos, c, x, y, z, reg)) {
                     for (int i = 0; i < 6; i++) {
-                        if (isAir(world, pos, c, x + FACES[i].dx, y + FACES[i].dy, z + FACES[i].dz)) {
-                            addFace(mesh, x, y, z, i, c->get(x, y, z));
+                        if (isTransparent(world, pos, c, x + FACES[i].dx, y + FACES[i].dy, z + FACES[i].dz, reg)) {
+                            addFace(mesh, x, y, z, i, c->get(x, y, z), reg);
                         }
                     }
                 }

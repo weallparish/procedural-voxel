@@ -34,7 +34,12 @@ FetchContent_Declare(stb
     GIT_REPOSITORY https://github.com/nothings/stb.git
     GIT_TAG        master)
 
-FetchContent_MakeAvailable(glfw glm imgui stb)
+FetchContent_Declare(fnl
+    GIT_REPOSITORY https://github.com/auburn/fastnoiselite.git
+    GIT_TAG        master)
+
+
+FetchContent_MakeAvailable(glfw glm imgui stb fnl)
 
 # ---- glad (generated files live in external/glad, see README steps) ----
 add_library(glad STATIC external/glad/src/gl.c)
@@ -60,10 +65,14 @@ add_executable(voxel src/main.cpp
   src/core/Input.h
   src/core/Camera.h
   src/core/Debug.h
-  src/world/World.h)
+  src/world/World.h
+  src/world/TerrainGen.h
+  src/render/Cull.h
+  src/world/ChunkStreamer.h)
 target_link_libraries(voxel PRIVATE glad glfw glm::glm imgui)
 
 target_include_directories(voxel PRIVATE ${stb_SOURCE_DIR})
+target_include_directories(voxel PRIVATE ${fnl_SOURCE_DIR})
 
 if(MSVC)
   target_compile_options(voxel PRIVATE /W4)

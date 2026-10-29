@@ -15,10 +15,13 @@
 #include <vector>
 
 #include "world/World.h"
+#include "world/TerrainGen.h"
 #include "world/Chunk.h"
 #include "world/Mesher.h"
+#include "world/ChunkStreamer.h"
 #include "render/ChunkMesh.h"
 #include "render/Texture.h"
+#include "render/Cull.h"
 #include "core/Input.h"
 #include "core/Camera.h"
 #include "core/Debug.h"
@@ -70,7 +73,7 @@ uniform sampler2D uAtlas;
 
 out vec4 FragColor;
 void main() {
-    FragColor = vec4(texture(uAtlas, vUV) * vShade);
+    FragColor = vec4((texture(uAtlas, vUV)) * vShade);
 }
 )";
 
@@ -219,8 +222,7 @@ int main() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(LineVertex), (void*)offsetof(LineVertex, color));
     glBindVertexArray(0);
 
-    auto atlasPixels = makeTestAtlas();
-    GLuint atlasTex = uploadAtlas(atlasPixels.data(), ATLAS_PX, ATLAS_PX);
+    GLuint atlasTex = loadTexture("assets/textures/atlas.png");
 
     Camera cam;
 
@@ -230,22 +232,19 @@ int main() {
     double lastTime = glfwGetTime();
 
     // Generate world with a chunk going in the positive and negative direction for each axis.
-    World world;
-    for (int x = -16; x < 16; x++) {
-        for (int z = -16; z < 16; z++) {
-            for (int y = -16; y < 16; y++) {
-                world.setBlock(x, y, z, 1);
-            }
-        }
-    }
 
+    BlockRegistry registry;
+    World world;
+    ChunkStreamer chunkStreamer = ChunkStreamer(12345, registry);
 
     std::unordered_map<ChunkPos, ChunkMesh, ChunkPosHash> meshes;
-    for (auto& [pos, chunk] : world.chunks) {
-        MeshData md = meshChunk(world, pos, chunk.get()); // Probably should find a better way to pass this info in. Weird that I pass in the position and the chunk.
-        if (md.indices.empty()) continue;
-        meshes[pos].upload(md);
-    }
+    // for (auto& [pos, chunk] : world.chunks) {
+    //     MeshData md = meshChunk(world, pos, chunk.get(), registry); // Probably should find a better way to pass this info in. Weird that I pass in the position and the chunk.
+    //     if (md.indices.empty()) continue;
+    //     meshes[pos].upload(md);
+    // }
+
+    int chunksRendered, chunksTotal, chunksRemoved = 0;
 
     // Code to run while the window is still open.
     while (!glfwWindowShouldClose(window)) {
@@ -270,7 +269,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        renderDebug(&cam, &vsync);
+        renderDebug(chunksRendered, chunksTotal, chunksRemoved, &chunkStreamer, &cam, &vsync);
         
         // We're done creating windows, render them.
         ImGui::Render();
@@ -280,8 +279,12 @@ int main() {
         glClearColor(0.53f, 0.74f, 0.92f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Rendering
+
         glm::mat4 proj = glm::perspective(glm::radians(cam.fov), (float)frameBufferWidth / (float)frameBufferHeight, 0.1f, 1000.0f);
         glm::mat4 mvp = proj * cam.view();
+
+        Frustum planes = calculatePlanes(mvp, cam);
 
         glUseProgram(program);
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(mvp));
@@ -289,16 +292,26 @@ int main() {
         glDrawArrays(GL_LINES, 0, (GLsizei)grid.size());
         glBindVertexArray(0);
 
+        // Chunks
+
         glUseProgram(chunkProgram);
         glUniformMatrix4fv(chunkMvpLoc, 1, GL_FALSE, glm::value_ptr(mvp));
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(glGetUniformLocation(chunkProgram, "uAtlas"), 0);
         glBindTexture(GL_TEXTURE_2D, atlasTex);
-        
+
+        chunksRemoved += chunkStreamer.update(world, cam).size();
+
+        chunksRendered = 0;
+        chunksTotal = world.chunks.size();
         for (auto& [pos, mesh] : meshes) {
+            if (!isVisibleToFrustum(planes, pos)) {
+                continue;
+            };
             glm::vec3 offset(pos.x * CHUNK_SIZE, pos.y * CHUNK_SIZE, pos.z * CHUNK_SIZE);
             glUniform3fv(offsetLoc, 1, glm::value_ptr(offset));
             mesh.draw();
+            chunksRendered++;
         }
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

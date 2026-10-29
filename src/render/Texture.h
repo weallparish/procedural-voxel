@@ -7,34 +7,9 @@
 #include <stb_image.h>
 
 constexpr int TILE_PX = 16;
-constexpr int ATLAS_TILES = 4;
-constexpr int ATLAS_PX = TILE_PX * ATLAS_TILES;   // 64
-
-std::vector<unsigned char> makeTestAtlas() {
-    std::vector<unsigned char> px(ATLAS_PX * ATLAS_PX * 4);
-
-    for (int y = 0; y < ATLAS_PX; ++y) {
-        for (int x = 0; x < ATLAS_PX; ++x) {
-            int tile = (y / TILE_PX) * ATLAS_TILES + (x / TILE_PX);
-            int tx = x % TILE_PX, ty = y % TILE_PX;   // position inside the tile
-
-            unsigned char r = (tile * 20 + 40) % 256;
-            unsigned char g = (tile * 30 + 80) % 256;
-            unsigned char b = (tile * 40 + 120) % 256;
-
-            bool border = tx == 0 || ty == 0 || tx == TILE_PX - 1 || ty == TILE_PX - 1;
-            bool marker = tx < 4 && ty < 4;
-
-            if (border) { r /= 2; g /= 2; b /= 2; }
-            if (marker) { r = g = b = 255; }
-
-            unsigned char* p = &px[(y * ATLAS_PX + x) * 4];
-            p[0] = r; p[1] = g; p[2] = b; p[3] = 255;
-        }
-    }
-    return px;
-}
-
+constexpr int ATLAS_WIDTH = 10;
+constexpr int ATLAS_HEIGHT = 16;
+constexpr int ATLAS_PX = TILE_PX * ATLAS_WIDTH * ATLAS_HEIGHT;   // 64
 
 GLuint uploadAtlas(const unsigned char* data, int w, int h) {
     GLuint tex;

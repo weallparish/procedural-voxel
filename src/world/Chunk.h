@@ -2,10 +2,10 @@
 #include <cstdint>
 #include <cassert>
 
+#include "BlockRegistry.h"
+
 constexpr int CHUNK_SIZE = 16;
 constexpr int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
-
-using BlockID = uint16_t;
 
 struct Chunk {
     BlockID blocks[CHUNK_VOLUME] = {};

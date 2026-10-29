@@ -7,6 +7,19 @@
 
 struct ChunkPos {
     int x, y, z;
+
+    float squaredMagnitude() {
+        return x^2 + y^2 + z^2;
+    }
+
+    glm::vec3 operator-(const ChunkPos c) const {
+        return glm::vec3{x - c.x, y - c.y, z - c.z};
+    }
+
+    glm::vec3 operator*(const int c) const {
+        return glm::vec3{x * c, y * c, z * c};
+    }
+
     bool operator==(const ChunkPos& o) const {
         return x == o.x && y == o.y && z == o.z;
     }
@@ -60,8 +73,14 @@ struct World {
         return it->second.get();
     }
 
+    ChunkPos& worldPosToChunkPos(int x, int y, int z) const {
+        ChunkPos pos = {floorDiv(x, CHUNK_SIZE), floorDiv(y, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)};
+
+        return pos;
+    }
+
     BlockID getBlock(int x, int y, int z) const {
-        const Chunk* c = getChunk({floorDiv(x, CHUNK_SIZE), floorDiv(y, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)});
+        const Chunk* c = getChunk(worldPosToChunkPos(x, y, z));
 
         if (!c) {
             return 0; // Non-existing chunks are assumed to have air.
