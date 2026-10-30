@@ -22,6 +22,8 @@ struct ChunkStreamer {
 
     int chunkLimitPerFrame = 3;
 
+    bool built = false;
+
     TerrainGen tg;
 
     ChunkStreamer(int s, BlockRegistry& reg) : tg(s, reg) {
@@ -30,37 +32,41 @@ struct ChunkStreamer {
     }
 
     std::vector<ChunkPos> update(World& world, Camera cam) {
-        ChunkPos c = world.worldPosToChunkPos(int(cam.pos.x), int(cam.pos.y), int(cam.pos.z));
+        ChunkPos c = world.worldPosToChunkPos(int(std::floor(cam.pos.x)), int(std::floor(cam.pos.y)), int(std::floor(cam.pos.z)));
         std::vector<ChunkPos> removedChunks;
 
         // Rebuild list of wanted chunks.
-        if (lastChunk != c) {
+        if (lastChunk != c || !built) {
+            built = true;
             lastChunk = c;
 
-            for (int dz = -radius; dz <= radius; dz++) {
-                for (int dx = -radius; dx <= radius; dx++) {
-                    int distanceSquared = dx * dx + dz * dz;
+            chunkRequests.clear();
 
-                    if (distanceSquared > (radius+1) * (radius+1)) continue;
+            for (int dz = -(radius+1); dz <= (radius+1); dz++) {
+                for (int dx = -(radius+1); dx <= (radius+1); dx++) {
+                    for (int dy = -(radius + 1); dy <= (radius + 1); dy++) {
+                        int distanceSquared = dx * dx + dy* dy + dz * dz;
 
-                    for (int dy = -3; dy <= 3; dy++) {
-                        chunkRequests.push_back({{c.x + dx, dy, c.z + dz}, distanceSquared});
+                        if (distanceSquared > (radius+1) * (radius+1)) continue;
+
+                        chunkRequests.push_back({{c.x + dx, c.y + dy, c.z + dz}, distanceSquared});
                     }
+                    
+                    
                     
                 }
             }
 
             std::sort(chunkRequests.begin(), chunkRequests.end(), [](const WantedChunk& a, const WantedChunk& b) {return a.distance < b.distance;});
 
-            for (auto it = world.chunks.begin(); it != world.chunks.end(); it++) {
-                int distance = (it->first.x - c.x) * (it->first.x - c.x) + (it->first.z - c.z) * (it->first.z - c.z);
+            for (auto it = world.chunks.begin(); it != world.chunks.end();) {
+                int distance = (it->first.x - c.x) * (it->first.x - c.x) + (it->first.y - c.y) * (it->first.y - c.y) + (it->first.z - c.z) * (it->first.z - c.z);
                 if (distance > (radius + 3) * (radius + 3)) {
                     removedChunks.push_back(it->first);
                     it = world.chunks.erase(it);
-
-                    if (it == world.chunks.end()) {
-                        break;
-                    }
+                }
+                else {
+                    it++;
                 }
             }
         }
@@ -70,17 +76,11 @@ struct ChunkStreamer {
         for (auto chunkRequest : chunkRequests) {
             if (budget == 0) break;
 
+            if (world.chunks.contains(chunkRequest.pos)) continue;
+
             tg.generateChunk(world.createChunk(chunkRequest.pos), chunkRequest.pos);
 
             budget--;
-        }
-
-        for (int i = chunkLimitPerFrame; i >= 0; i--) {
-            if (i >= chunkRequests.size()) {
-                continue;
-            }
-
-            chunkRequests.erase(chunkRequests.begin() + i);
         }
 
         return removedChunks;
