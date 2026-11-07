@@ -73,9 +73,8 @@ struct World {
         return it->second.get();
     }
 
-    ChunkPos& worldPosToChunkPos(int x, int y, int z) const {
+    ChunkPos worldPosToChunkPos(int x, int y, int z) const {
         ChunkPos pos = {floorDiv(x, CHUNK_SIZE), floorDiv(y, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)};
-
         return pos;
     }
 

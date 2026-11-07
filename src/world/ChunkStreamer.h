@@ -13,7 +13,7 @@ struct WantedChunk {
 };
 
 struct ChunkStreamer {
-    int radius = 5;
+    int radius = 12;
     std::vector<WantedChunk> chunkRequests;
     ChunkPos lastChunk;
 

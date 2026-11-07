@@ -105,7 +105,7 @@ struct ChunkRenderer {
 
     std::unordered_set<ChunkPos, ChunkPosHash> processedChunks;
 
-    glm::vec3 neighbors[6] = {
+    glm::ivec3 neighbors[6] = {
         {1, 0, 0}, {-1, 0, 0},
         {0, 1, 0}, {0, -1, 0},
         {0, 0, 1}, {0, 0, -1}
@@ -116,6 +116,7 @@ struct ChunkRenderer {
 
     ChunkRenderer(const char* atlasPath) {
         chunkProgram = createGLProgram(vertSrc, fragSrc);
+        glUseProgram(chunkProgram);
         chunkMvpLoc = glGetUniformLocation(chunkProgram, "mvp");
         offsetLoc = glGetUniformLocation(chunkProgram, "uChunkOffset");
         glUniform1i(glGetUniformLocation(chunkProgram, "uAtlas"), 0);
@@ -127,7 +128,7 @@ struct ChunkRenderer {
         return processedChunks.contains(pos);
     }
 
-    bool neighborExists(const World& world, WantedChunk chunk, glm::vec3 offset,  int meshRadius) {
+    bool neighborExists(const World& world, WantedChunk chunk, glm::ivec3 offset) {
         ChunkPos neighborPos = {chunk.pos.x + offset.x, chunk.pos.y + offset.y, chunk.pos.z + offset.z};
         return world.chunks.contains(neighborPos);
     }
@@ -146,12 +147,14 @@ struct ChunkRenderer {
 
             bool neighborMissing = false;
             for (auto offset : neighbors) {
-                if (!neighborExists(world, request, offset, meshRadius)) {
+                if (!neighborExists(world, request, offset)) {
                     neighborMissing = true;
                     break;
                 }
             }
-            if (neighborMissing) continue;
+            if (neighborMissing) {
+                continue;
+            }
 
             MeshData md = meshChunk(world, request.pos, c, reg);
             budget--;
@@ -198,7 +201,7 @@ struct ChunkRenderer {
         for (auto& [pos, mesh] : meshes) mesh.destroy();
         meshes.clear();
 
-        glDeleteTextures(0, &atlas);
+        glDeleteTextures(1, &atlas);
         glDeleteProgram(chunkProgram);
     }
 };

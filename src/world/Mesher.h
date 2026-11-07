@@ -41,8 +41,7 @@ struct MeshData {
     std::vector<uint32_t> indices;
 };
 
-bool isAir(const World& world, const ChunkPos& pos, const Chunk* c, int x, int y, int z, const BlockRegistry& reg) {
-    // For now, we just assume border chunks are air.
+bool isAir(const World& world, const ChunkPos& pos, const Chunk* c, int x, int y, int z) {
     if (x >= 0 && x < CHUNK_SIZE 
      && y >= 0 && y < CHUNK_SIZE
      && z >= 0 && z < CHUNK_SIZE) {
@@ -56,7 +55,6 @@ bool isAir(const World& world, const ChunkPos& pos, const Chunk* c, int x, int y
 }
 
 bool isTransparent(const World& world, const ChunkPos& pos, const Chunk* c, int x, int y, int z, const BlockRegistry& reg) {
-    // For now, we just assume border chunks are air.
     if (x >= 0 && x < CHUNK_SIZE 
      && y >= 0 && y < CHUNK_SIZE
      && z >= 0 && z < CHUNK_SIZE) {
@@ -66,6 +64,7 @@ bool isTransparent(const World& world, const ChunkPos& pos, const Chunk* c, int 
     int wx = pos.x * CHUNK_SIZE + x;
     int wy = pos.y * CHUNK_SIZE + y;
     int wz = pos.z * CHUNK_SIZE + z;
+
     return !reg.get(world.getBlock(wx, wy, wz)).opaque;
 }
 
@@ -105,7 +104,7 @@ MeshData meshChunk(const World& world, const ChunkPos& pos, Chunk* c, BlockRegis
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int z = 0; z < CHUNK_SIZE; z++) {
             for (int y = 0; y < CHUNK_SIZE; y++) {
-                if (!isAir(world, pos, c, x, y, z, reg)) {
+                if (!isAir(world, pos, c, x, y, z)) {
                     for (int i = 0; i < 6; i++) {
                         if (isTransparent(world, pos, c, x + FACES[i].dx, y + FACES[i].dy, z + FACES[i].dz, reg)) {
                             addFace(mesh, x, y, z, i, c->get(x, y, z), reg);
