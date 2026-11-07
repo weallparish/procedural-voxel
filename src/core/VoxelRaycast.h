@@ -37,7 +37,7 @@ std::optional<PositionWithNormal> castToNearest(const glm::vec3& rayOrigin, cons
         BlockDef block = reg.get(world.getBlock(pos.x, pos.y, pos.z));
 
         if (block.solid) {
-            return PositionWithNormal(pos, lastPos - pos);
+            return PositionWithNormal(pos, lastPos);
         }
 
         lastPos = pos;

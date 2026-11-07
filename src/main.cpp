@@ -151,12 +151,17 @@ int main() {
         chunksRendered = chunkRenderer.draw(mvp, planes);
 
         // Interaction
-        if (auto lookingAt = castToNearest(cam.pos, cam.front(), world, registry)) {
-            outlineRenderer.draw(mvp, (*lookingAt).pos);
-        }
-        
-        
+        if (auto raycastResult = castToNearest(cam.pos, cam.front(), world, registry)) {
+            glm::vec3 lookingAtBlock = (*raycastResult).pos;
+            glm::vec3 normalBlock = (*raycastResult).normal;
+            outlineRenderer.draw(mvp, lookingAtBlock);
 
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) world.setBlock(int(lookingAtBlock.x), int(lookingAtBlock.y), int(lookingAtBlock.z), 0);
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) world.setBlock(int(normalBlock.x), int(normalBlock.y), int(normalBlock.z), 1);
+        }
+
+
+    
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }

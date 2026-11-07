@@ -87,11 +87,11 @@ struct ChunkRenderer {
 
             if (request.distance > meshRadius * meshRadius) continue;
 
-            if (chunkProcessed(request.pos)) continue;
-
             Chunk* c = world.getChunk(request.pos);
             if (!c) continue;
 
+            if (chunkProcessed(request.pos) && !c->isDirty) continue;
+            
             bool neighborMissing = false;
             for (auto offset : neighbors) {
                 if (!neighborExists(world, request, offset)) {
@@ -107,7 +107,7 @@ struct ChunkRenderer {
             budget--;
             processedChunks.insert({request.pos});
 
-            if (md.indices.empty()) continue;
+            if (md.indices.empty() && !c->isDirty) continue;
             meshes[request.pos].upload(md);
         }
 

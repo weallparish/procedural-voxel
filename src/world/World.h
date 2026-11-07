@@ -83,5 +83,31 @@ struct World {
 
         assert(c && "setBlock: chunk is null");
         c->set(cX, cY, cZ, block);
+        setNeighborsDirty(c, chunkPos, cX, cY, cZ);
+    }
+
+    void setNeighborsDirty(Chunk* chunk, ChunkPos pos, int x, int y, int z) {
+        chunk->isDirty = true;
+
+        if (x == 0) {
+            getChunk(ChunkPos(pos.x - 1, pos.y, pos.z))->isDirty = true;
+        }
+        else if (x == 15) {
+            getChunk(ChunkPos(pos.x + 1, pos.y, pos.z))->isDirty = true;
+        }
+
+        if (y == 0) {
+            getChunk(ChunkPos(pos.x, pos.y - 1, pos.z))->isDirty = true;
+        }
+        else if (y == 15) {
+            getChunk(ChunkPos(pos.x, pos.y + 1, pos.z))->isDirty = true;
+        }
+
+        if (z == 0) {
+            getChunk(ChunkPos(pos.x, pos.y, pos.z - 1))->isDirty = true;
+        }
+        else if (z == 15) {
+            getChunk(ChunkPos(pos.x, pos.y, pos.z + 1))->isDirty = true;
+        }
     }
 };

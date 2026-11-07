@@ -9,6 +9,7 @@ constexpr int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
 struct Chunk {
     BlockID blocks[CHUNK_VOLUME] = {};
+    bool isDirty = false;
 
     static int index(int x, int y, int z) {
         // Make sure we are reading memory in the chunk's bounds.
