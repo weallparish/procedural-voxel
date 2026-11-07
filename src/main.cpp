@@ -152,7 +152,7 @@ int main() {
 
         // Interaction
         if (auto lookingAt = castToNearest(cam.pos, cam.front(), world, registry)) {
-            outlineRenderer.draw(mvp, *lookingAt);
+            outlineRenderer.draw(mvp, (*lookingAt).pos);
         }
         
         

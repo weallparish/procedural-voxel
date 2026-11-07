@@ -16,13 +16,20 @@
 
 constexpr int MAX_STEPS = 16;
 
+struct PositionWithNormal {
+    glm::vec3 pos;
+    glm:: vec3 normal;
+};
+
 // Based on Amantides and Woo's fast voxel traversal algorithm.
-std::optional<glm::vec3> castToNearest(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const World& world, const BlockRegistry& reg) {
+std::optional<PositionWithNormal> castToNearest(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const World& world, const BlockRegistry& reg) {
     // Variable initialization.
     glm::vec3 step = signOfDir(rayDirection);
     glm::vec3 tDelta = abs(glm::vec3(1) / rayDirection);
     glm::vec3 pos = floor(rayOrigin);
     glm::vec3 tMax = (pos - rayOrigin + max(step, glm::vec3(0))) / rayDirection;
+
+    glm::vec3 lastPos = pos;
 
     // Traversal loop
     for (int steps = 0; steps < MAX_STEPS; ++steps) {
@@ -30,8 +37,10 @@ std::optional<glm::vec3> castToNearest(const glm::vec3& rayOrigin, const glm::ve
         BlockDef block = reg.get(world.getBlock(pos.x, pos.y, pos.z));
 
         if (block.solid) {
-            return pos;
+            return PositionWithNormal(pos, lastPos - pos);
         }
+
+        lastPos = pos;
 
         if (tMax.x < tMax.y) {
             if (tMax.x < tMax.z) {
