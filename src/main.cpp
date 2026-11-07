@@ -22,62 +22,12 @@
 #include "render/ChunkMesh.h"
 #include "render/Cull.h"
 #include "render/ChunkRenderer.h"
+#include "render/BlockOutlineRenderer.h"
 #include "core/Input.h"
 #include "core/Camera.h"
 #include "core/Debug.h"
 #include "core/VoxelRaycast.h"
-
-// ---------------------------------------------------------------------------
-// Shaders (inline for now; move to assets/shaders once you have more than one)
-// ---------------------------------------------------------------------------
-static const char* kVertSrc = R"(#version 450 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aColor;
-uniform mat4 mvp;
-out vec3 vColor;
-void main() {
-    vColor = aColor;
-    gl_Position = mvp * vec4(aPos, 1.0);
-}
-)";
-
-static const char* kFragSrc = R"(#version 450 core
-in vec3 vColor;
-out vec4 FragColor;
-void main() {
-    FragColor = vec4(vColor, 1.0);
-}
-)";
-
-// ---------------------------------------------------------------------------
-// Debug grid: lines on y = 0 plus colored axes (X red, Y green, Z blue)
-// ---------------------------------------------------------------------------
-struct LineVertex {
-    glm::vec3 pos;
-    glm::vec3 color;
-};
-
-static std::vector<LineVertex> buildGrid(int half) {
-    std::vector<LineVertex> v;
-    for (int i = -half; i <= half; ++i) {
-        // Color of every tenth coordinate is different.
-        float c = (i % 10 == 0) ? 0.45f : 0.22f;
-        glm::vec3 col(c);
-        if (i != 0) {
-            v.push_back({{(float)-half, 0, (float)i}, col});
-            v.push_back({{(float)half, 0, (float)i}, col});
-            v.push_back({{(float)i, 0, (float)-half}, col});
-            v.push_back({{(float)i, 0, (float)half}, col});
-        }
-    }
-    v.push_back({{(float)-half, 0, 0}, {0.9f, 0.2f, 0.2f}}); // X axis
-    v.push_back({{(float)half, 0, 0}, {0.9f, 0.2f, 0.2f}});
-    v.push_back({{0, 0, (float)-half}, {0.2f, 0.3f, 0.9f}}); // Z axis
-    v.push_back({{0, 0, (float)half}, {0.2f, 0.3f, 0.9f}});
-    v.push_back({{0, 0, 0}, {0.2f, 0.9f, 0.2f}});            // Y axis
-    v.push_back({{0, 10, 0}, {0.2f, 0.9f, 0.2f}});
-    return v;
-}
+#include "utils/RenderUtils.h"
 
 // ---------------------------------------------------------------------------
 int main() {
@@ -122,27 +72,6 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glEnable(GL_MULTISAMPLE);
-    GLuint program = createGLProgram(kVertSrc, kFragSrc);
-    GLint mvpLoc = glGetUniformLocation(program, "mvp");
-
-    std::vector<LineVertex> grid = buildGrid(50);
-    GLuint vao = 0, vbo = 0;
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-    // Put grid data inside the buffer.
-    glBufferData(GL_ARRAY_BUFFER, grid.size() * sizeof(LineVertex), grid.data(), GL_STATIC_DRAW);
-
-    // 0th vertex attribute is position with 3 arguments each (x, y, z)
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(LineVertex), (void*)offsetof(LineVertex, pos));
-
-    // 1st vertex attribute is color with 3 arguments each (r, g, b)
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(LineVertex), (void*)offsetof(LineVertex, color));
-    glBindVertexArray(0);
 
     Camera cam;
 
@@ -157,6 +86,7 @@ int main() {
     World world;
     ChunkStreamer chunkStreamer = ChunkStreamer(12345, registry);
     ChunkRenderer chunkRenderer = ChunkRenderer("assets/textures/atlas.png");
+    BlockOutlineRenderer outlineRenderer;
     
     // for (auto& [pos, chunk] : world.chunks) {
     //     MeshData md = meshChunk(world, pos, chunk.get(), registry); // Probably should find a better way to pass this info in. Weird that I pass in the position and the chunk.
@@ -206,12 +136,6 @@ int main() {
 
         Frustum planes = calculatePlanes(mvp, cam);
 
-        glUseProgram(program);
-        glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(mvp));
-        glBindVertexArray(vao);
-        glDrawArrays(GL_LINES, 0, (GLsizei)grid.size());
-        glBindVertexArray(0);
-
         // Chunks
         chunksTotal = world.chunks.size();
 
@@ -225,6 +149,12 @@ int main() {
         chunksMeshed = chunkRenderer.update(world, chunkStreamer.chunkRequests, chunkStreamer.radius, registry, chunkStreamer.chunkLimitPerFrame);
 
         chunksRendered = chunkRenderer.draw(mvp, planes);
+
+        // Interaction
+        if (auto lookingAt = castToNearest(cam.pos, cam.front(), world, registry)) {
+            outlineRenderer.draw(mvp, *lookingAt);
+        }
+        
         
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -233,10 +163,6 @@ int main() {
 
     // Clear all resources we were using.
     chunkRenderer.shutdown();
-
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
-    glDeleteProgram(program);
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

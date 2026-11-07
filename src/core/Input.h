@@ -45,9 +45,6 @@ struct Input {
             if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) cam->pos -= r * v;
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) cam->pos.y += v;
             if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) cam->pos.y -= v;
-
-            // Interaction
-            glm::vec3 lookingAt = castToNearest(cam->pos, cam->front(), world, reg);
         }
     }
 

@@ -7,14 +7,17 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <optional>
+
 #include "utils/VoxelMath.h"
 #include "world/World.h"
 #include "world/BlockRegistry.h"
 
-constexpr int MAX_STEPS = 128;
+
+constexpr int MAX_STEPS = 16;
 
 // Based on Amantides and Woo's fast voxel traversal algorithm.
-glm::vec3 castToNearest(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const World& world, const BlockRegistry& reg) {
+std::optional<glm::vec3> castToNearest(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const World& world, const BlockRegistry& reg) {
     // Variable initialization.
     glm::vec3 step = signOfDir(rayDirection);
     glm::vec3 tDelta = abs(glm::vec3(1) / rayDirection);
@@ -52,5 +55,5 @@ glm::vec3 castToNearest(const glm::vec3& rayOrigin, const glm::vec3& rayDirectio
         }
     }
 
-    return glm::vec3(0);
+    return {};
 }
