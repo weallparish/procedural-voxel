@@ -157,7 +157,10 @@ int main() {
             outlineRenderer.draw(mvp, lookingAtBlock);
 
             if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) world.setBlock(int(lookingAtBlock.x), int(lookingAtBlock.y), int(lookingAtBlock.z), 0);
-            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) world.setBlock(int(normalBlock.x), int(normalBlock.y), int(normalBlock.z), 1);
+
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS){
+                if (floor(cam.pos) != normalBlock) world.setBlock(int(normalBlock.x), int(normalBlock.y), int(normalBlock.z), 1);
+            } 
         }
 
 
