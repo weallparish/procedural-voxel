@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 
 #include "Camera.h"
+#include "core/VoxelRaycast.h"
 
 struct Input {
     bool captured = true;
@@ -11,7 +12,7 @@ struct Input {
     bool escWasDown = false;
     double lastMouseX = 0.0, lastMouseY = 0.0;
 
-    void applyInput(GLFWwindow* window, Camera* cam, float dt) {
+    void applyInput(GLFWwindow* window, Camera* cam, float dt, const World& world, const BlockRegistry& reg) {
         // Esc toggles mouse capture (so you can use the ImGui widgets)
         bool escDown = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
         if (escDown && !escWasDown) setCapture(window, !captured);
@@ -44,6 +45,9 @@ struct Input {
             if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) cam->pos -= r * v;
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) cam->pos.y += v;
             if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) cam->pos.y -= v;
+
+            // Interaction
+            glm::vec3 lookingAt = castToNearest(cam->pos, cam->front(), world, reg);
         }
     }
 

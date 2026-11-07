@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "Chunk.h"
+#include "utils/VoxelMath.h"
 
 struct ChunkPos {
     int x, y, z;
@@ -36,30 +37,6 @@ struct ChunkPosHash {
 
 struct World {
     std::unordered_map<ChunkPos, std::unique_ptr<Chunk>, ChunkPosHash> chunks;
-
-    inline int floorDiv(int a, int b) const {
-        int q = a / b;
-        
-        // If there is a decimal left over and a and b aren't the same sign.
-        if (a % b != 0 && ((a < 0) != (b < 0))) {
-            return  q - 1;
-        }
-        else {
-            return q;
-        }
-    }
-
-    inline int floorMod(int a, int b) const {
-        int m = a % b;
-
-        // If there is a decimal left over and a and b aren't the same sign.
-        if (a % b != 0 && ((a < 0) != (b < 0))) {
-            return m + b;
-        }
-        else {
-            return m;
-        }
-    }
 
     Chunk* createChunk(const ChunkPos& pos) {
         auto& slot = chunks[pos];

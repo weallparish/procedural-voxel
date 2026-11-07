@@ -20,7 +20,7 @@ struct ChunkStreamer {
     int seed;
     BlockRegistry registry;
 
-    int chunkLimitPerFrame = 3;
+    int chunkLimitPerFrame = 9;
 
     bool built = false;
 

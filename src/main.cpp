@@ -20,12 +20,12 @@
 #include "world/Mesher.h"
 #include "world/ChunkStreamer.h"
 #include "render/ChunkMesh.h"
-#include "render/Texture.h"
 #include "render/Cull.h"
 #include "render/ChunkRenderer.h"
 #include "core/Input.h"
 #include "core/Camera.h"
 #include "core/Debug.h"
+#include "core/VoxelRaycast.h"
 
 // ---------------------------------------------------------------------------
 // Shaders (inline for now; move to assets/shaders once you have more than one)
@@ -175,7 +175,7 @@ int main() {
         glfwPollEvents();
 
         // Apply user input
-        input.applyInput(window, &cam, dt);
+        input.applyInput(window, &cam, dt, world, registry);
 
         int frameBufferWidth, frameBufferHeight;
         glfwGetFramebufferSize(window, &frameBufferWidth, &frameBufferHeight);
