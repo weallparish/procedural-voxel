@@ -76,7 +76,7 @@ void addFace(MeshData& mesh, int x, int y, int z, int face, BlockID id, const Bl
     int tx = tile % ATLAS_WIDTH;
     int ty = tile / ATLAS_WIDTH;
 
-    float e = 0.5f / TILE_PX;
+    float e = 0.1f / TILE_PX;
 
 
     for (int i = 0; i < 4; i++) {
